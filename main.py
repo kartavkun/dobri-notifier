@@ -20,12 +20,12 @@ if not DISCORD_TOKEN or not DISCORD_CHANNEL_ID:
     exit()
 
 initial_channels = [
-    "kartav__", "IvanGO", "senyawei", "glebauster",
-    "godroponika", "quizzzzz_", "vudek_", "pokemonyaaa", "25mosey",
-    "majewskiosu", "f0rz__", "steisha_owo", "danon_osu", "skyfai_",
-    "zoomqge", "lofkes_", "sandron", "kkanoyaa", "desuqe_",
-    "dahujka_owo", "hober38_", "wavewyyy", "mitor0_",
-    "zxbatonzx"
+    "IvanGO", "senyawei", "glebauster",
+    "kartav__", "vudek_", "rainbowtaves", "ksuenoot", "danon_osu",
+    "wavewyyy", "steisha_owo", "dahujka_owo", "kuukan_osu", "silversnakeuwu",
+    "kkanoyaa", "lofkes_", "kury76", "quizzzzz_", "matrix_632",
+    "pokemonyaaa", "j1mbeaam", "f0rz__", "mitor0_", "25mosey",
+    "desuqe_", "godroponika", "honashhk", "skyfai_", "razorchik__",
 ]
 
 intents = discord.Intents.default()
