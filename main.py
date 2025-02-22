@@ -69,22 +69,22 @@ class DiscordBot(discord.Client):
     async def send_discord_notification(self, channel_name, game_name, stream_title):
         channel = await self.fetch_channel(DISCORD_CHANNEL_ID)
 
+        # ID роли, которую нужно упомянуть
+        role_id = 1216401731517415514
+        mention = f"<@&{role_id}>"  # Формат упоминания роли
+
         # Получаем информацию о пользователе через Twitch API
-        user = await self.twitch_bot.fetch_users(names=[channel_name])  # Используем 'names' вместо 'logins')
+        user = await self.twitch_bot.fetch_users(names=[channel_name])
 
         if user:
-            avatar_url = user[0].profile_image  # Получаем URL аватара
+            avatar_url = user[0].profile_image
 
-            # Получаем объект Stream для канала
             stream = await self.twitch_bot.fetch_streams(user_logins=[channel_name])
 
             if stream:
-                # Используем thumbnail_url из объекта Stream и добавляем параметры для предотвращения кэширования
                 thumbnail_url = stream[0].thumbnail_url.format(width=1280, height=720)
-
-                # Добавляем временную метку или уникальный параметр в URL, чтобы избежать кэширования
-                timestamp = int(time.time())  # Текущее время в секундах
-                thumbnail_url_with_cache_bust = f"{thumbnail_url}?{timestamp}"  # Добавляем параметр к URL
+                timestamp = int(time.time())
+                thumbnail_url_with_cache_bust = f"{thumbnail_url}?{timestamp}"
 
                 embed = discord.Embed(
                     title=f"{stream_title}",
@@ -94,16 +94,13 @@ class DiscordBot(discord.Client):
                 embed.set_author(
                     name=f"{channel_name} запустил стрим на Twitch",
                     url=f"https://twitch.tv/{channel_name}",
-                    icon_url=avatar_url  # Устанавливаем аватарку
+                    icon_url=avatar_url
                 )
-                embed.add_field(
-                    name="Игра:",
-                    value=f"{game_name}",
-                    inline=True
-                )
-                embed.set_image(url=thumbnail_url_with_cache_bust)  # Устанавливаем обновленное изображение с параметром
+                embed.add_field(name="Игра:", value=f"{game_name}", inline=True)
+                embed.set_image(url=thumbnail_url_with_cache_bust)
 
-                await channel.send(embed=embed)
+                # Отправляем одно сообщение с упоминанием роли и Embed
+                await channel.send(content=mention, embed=embed)
 
 discord_bot = DiscordBot(intents=intents)
 discord_bot.run(DISCORD_TOKEN)
