@@ -47,20 +47,24 @@ class DiscordBot(discord.Client):
                 # Получаем информацию о стримах
                 streams = await self.twitch_bot.fetch_streams(user_logins=initial_channels)
 
-                # Сохраняем данные о стримах (имя, категория, название)
-                current_streaming_channels = {
-                    (stream.user.name, stream.game_name, stream.title)
-                    for stream in streams
-                }
-                
-                # Находим новые стримы
+                # Сохраняем только имена каналов, которые сейчас стримят
+                current_streaming_channels = {stream.user.name for stream in streams}
+
+                # Находим новые стримы (каналы, которые начали стримить)
                 new_streaming_channels = current_streaming_channels - self.streaming_channels
 
-                if new_streaming_channels:
-                    self.streaming_channels.update(new_streaming_channels)
+                # Обновляем множество стримящих каналов
+                self.streaming_channels = current_streaming_channels
 
-                    for channel_name, game_name, stream_title in new_streaming_channels:
-                        await self.send_discord_notification(channel_name, game_name, stream_title)
+                # Отправляем уведомления только для новых стримов
+                if new_streaming_channels:
+                    for channel_name in new_streaming_channels:
+                        # Находим полную информацию о стриме
+                        stream_info = next((stream for stream in streams if stream.user.name == channel_name), None)
+                        if stream_info:
+                            await self.send_discord_notification(
+                                channel_name, stream_info.game_name, stream_info.title
+                            )
             except Exception as e:
                 print(f"Error during stream check: {e}")
 
