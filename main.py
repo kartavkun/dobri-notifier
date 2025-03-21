@@ -3,13 +3,14 @@ import os
 from dotenv import load_dotenv
 import discord
 from twitchio.ext import commands
-import time  # Импортируем модуль для получения времени
+import time
 
+# Загрузка переменных окружения
 load_dotenv()
 
 TWITCH_API_TOKEN = os.getenv("TWITCH_API_TOKEN")
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
-DISCORD_CHANNEL_ID = os.getenv("DISCORD_CHANNEL_ID")
+DISCORD_CHANNEL_ID = int(os.getenv("DISCORD_CHANNEL_ID"))
 
 if not TWITCH_API_TOKEN:
     print("Error: TWITCH_API_TOKEN not found. Please set it in your .env file.")
@@ -19,6 +20,7 @@ if not DISCORD_TOKEN or not DISCORD_CHANNEL_ID:
     print("Error: DISCORD_TOKEN or DISCORD_CHANNEL_ID not found. Please set them in your .env file.")
     exit()
 
+# Список каналов для мониторинга
 initial_channels = [
     "IvanGO", "senyawei", "glebauster",
     "kartav__", "vudek_", "rainbowtaves", "ksuenoot", "danon_osu",
@@ -28,6 +30,7 @@ initial_channels = [
     "desuqe_", "godroponika", "honashhk", "skyfai_", "razorchik__",
 ]
 
+# Настройки бота Discord
 intents = discord.Intents.default()
 intents.message_content = True
 
@@ -35,7 +38,7 @@ class DiscordBot(discord.Client):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.twitch_bot = commands.Bot(token=TWITCH_API_TOKEN, prefix='!', initial_channels=initial_channels)
-        self.streaming_channels = set()
+        self.streaming_channels = {}  # Храним активные стримы как {канал: (название, игра)}
 
     async def on_ready(self):
         print(f'Logged in as {self.user}')
@@ -44,27 +47,24 @@ class DiscordBot(discord.Client):
     async def check_stream_status(self):
         while True:
             try:
-                # Получаем информацию о стримах
                 streams = await self.twitch_bot.fetch_streams(user_logins=initial_channels)
-
-                # Сохраняем только имена каналов, которые сейчас стримят
-                current_streaming_channels = {stream.user.name for stream in streams}
+                current_streaming_channels = {
+                    stream.user.name: (stream.title, stream.game_name) for stream in streams
+                }
 
                 # Находим новые стримы (каналы, которые начали стримить)
-                new_streaming_channels = current_streaming_channels - self.streaming_channels
+                new_streams = {
+                    channel: data for channel, data in current_streaming_channels.items()
+                    if channel not in self.streaming_channels
+                }
 
-                # Обновляем множество стримящих каналов
+                # Обновляем активные стримы (НЕ ОБНОВЛЯЕМ ЕСЛИ ТОЛЬКО ИЗМЕНИЛОСЬ НАЗВАНИЕ ИЛИ ИГРА)
                 self.streaming_channels = current_streaming_channels
 
                 # Отправляем уведомления только для новых стримов
-                if new_streaming_channels:
-                    for channel_name in new_streaming_channels:
-                        # Находим полную информацию о стриме
-                        stream_info = next((stream for stream in streams if stream.user.name == channel_name), None)
-                        if stream_info:
-                            await self.send_discord_notification(
-                                channel_name, stream_info.game_name, stream_info.title
-                            )
+                for channel_name, (stream_title, game_name) in new_streams.items():
+                    await self.send_discord_notification(channel_name, game_name, stream_title)
+
             except Exception as e:
                 print(f"Error during stream check: {e}")
 
@@ -72,19 +72,13 @@ class DiscordBot(discord.Client):
 
     async def send_discord_notification(self, channel_name, game_name, stream_title):
         channel = await self.fetch_channel(DISCORD_CHANNEL_ID)
-
-        # ID роли, которую нужно упомянуть
         role_id = 1216401731517415514
-        mention = f"<@&{role_id}>"  # Формат упоминания роли
+        mention = f"<@&{role_id}>"
 
-        # Получаем информацию о пользователе через Twitch API
         user = await self.twitch_bot.fetch_users(names=[channel_name])
-
         if user:
             avatar_url = user[0].profile_image
-
             stream = await self.twitch_bot.fetch_streams(user_logins=[channel_name])
-
             if stream:
                 thumbnail_url = stream[0].thumbnail_url.format(width=1280, height=720)
                 timestamp = int(time.time())
@@ -103,7 +97,6 @@ class DiscordBot(discord.Client):
                 embed.add_field(name="Игра:", value=f"{game_name}", inline=True)
                 embed.set_image(url=thumbnail_url_with_cache_bust)
 
-                # Отправляем одно сообщение с упоминанием роли и Embed
                 await channel.send(content=mention, embed=embed)
 
 discord_bot = DiscordBot(intents=intents)
